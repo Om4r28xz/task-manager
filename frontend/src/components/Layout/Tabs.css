@@ -1,0 +1,50 @@
+.tabs-container {
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0 30px;
+}
+
+.tabs {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+}
+
+.tab {
+    padding: 14px 24px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.tab:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tab.active {
+    color: white;
+    border-bottom-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.tabs::-webkit-scrollbar {
+    height: 4px;
+}
+
+.tabs::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tabs::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.5);
+    border-radius: 4px;
+}
