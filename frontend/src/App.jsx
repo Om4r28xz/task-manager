@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Login from './components/Auth/Login';
 import Header from './components/Layout/Header';
 import Tabs from './components/Layout/Tabs';
@@ -6,6 +6,8 @@ import StatsPanel from './components/Stats/StatsPanel';
 import { authAPI, tasksAPI, projectsAPI, reportsAPI, notificationsAPI, historyAPI, commentsAPI } from './services/api';
 import './styles/App.css';
 import { format } from 'date-fns';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -20,6 +22,7 @@ function App() {
     const [comments, setComments] = useState([]);
     const [selectedTaskId, setSelectedTaskId] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [commentText, setCommentText] = useState('');
 
     // Task form state
     const [taskForm, setTaskForm] = useState({
@@ -135,6 +138,7 @@ function App() {
             setComments(data);
         } catch (error) {
             console.error('Error loading comments:', error);
+            setComments([]);
         }
     };
 
@@ -210,6 +214,7 @@ function App() {
             estimated_hours: task.estimated_hours || '',
         });
         setSelectedTaskId(task._id);
+        loadComments(task._id);
     };
 
     const clearTaskForm = () => {
@@ -224,6 +229,8 @@ function App() {
             estimated_hours: '',
         });
         setSelectedTaskId(null);
+        setComments([]);
+        setCommentText('');
     };
 
     const handleProjectSubmit = async (e) => {
@@ -251,6 +258,32 @@ function App() {
         }
     };
 
+    const clearSearchFilters = async () => {
+        setSearchFilters({
+            text: '',
+            status: '',
+            priority: '',
+            project_id: '',
+        });
+        await loadTasks();
+    };
+
+    const handleAddComment = async (e) => {
+        e.preventDefault();
+        if (!commentText.trim() || !selectedTaskId) return;
+
+        try {
+            await commentsAPI.create({
+                task_id: selectedTaskId,
+                comment: commentText,
+            });
+            setCommentText('');
+            await loadComments(selectedTaskId);
+        } catch (error) {
+            alert('Error al agregar comentario: ' + (error.response?.data?.detail || error.message));
+        }
+    };
+
     const markAllNotificationsRead = async () => {
         try {
             await notificationsAPI.markAllAsRead();
@@ -258,6 +291,178 @@ function App() {
         } catch (error) {
             console.error('Error marking notifications as read:', error);
         }
+    };
+
+    // CSV Export function
+    const exportToCSV = () => {
+        if (tasks.length === 0) {
+            alert('No hay tareas para exportar');
+            return;
+        }
+
+        // Define CSV headers
+        const headers = ['ID', 'Título', 'Estado', 'Prioridad', 'Proyecto', 'Asignado', 'Vencimiento', 'Horas Estimadas'];
+
+        // Convert tasks to CSV rows
+        const rows = tasks.map((task, index) => [
+            index + 1,
+            `"${task.title.replace(/"/g, '""')}"`,
+            task.status,
+            task.priority,
+            task.project_name || '-',
+            task.assigned_to_name || '-',
+            task.due_date ? format(new Date(task.due_date), 'dd/MM/yyyy') : '-',
+            task.estimated_hours || '-'
+        ]);
+
+        // Combine headers and rows
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.join(','))
+        ].join('\n');
+
+        // Create blob and download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `tareas_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // PDF Export function for reports
+    const exportReportToPDF = () => {
+        if (!stats) {
+            alert('No hay datos de estadísticas para exportar');
+            return;
+        }
+
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFontSize(20);
+        doc.text('Reporte del Sistema de Tareas', 14, 20);
+
+        // Date
+        doc.setFontSize(10);
+        doc.text(`Generado: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 28);
+
+        // Summary statistics
+        doc.setFontSize(14);
+        doc.text('Resumen de Estadísticas', 14, 40);
+
+        doc.setFontSize(11);
+        const summaryData = [
+            ['Total de Tareas', stats.total_tasks || 0],
+            ['Tareas Pendientes', stats.pending_tasks || 0],
+            ['Tareas en Progreso', stats.in_progress_tasks || 0],
+            ['Tareas Completadas', stats.completed_tasks || 0],
+            ['Total de Proyectos', stats.total_projects || 0],
+            ['Total de Usuarios', stats.total_users || 0]
+        ];
+
+        doc.autoTable({
+            startY: 45,
+            head: [['Métrica', 'Valor']],
+            body: summaryData,
+            theme: 'grid',
+            headStyles: { fillColor: [102, 126, 234] }
+        });
+
+        // Tasks by priority
+        if (stats.tasks_by_priority && stats.tasks_by_priority.length > 0) {
+            doc.setFontSize(14);
+            doc.text('Tareas por Prioridad', 14, doc.lastAutoTable.finalY + 15);
+
+            const priorityData = stats.tasks_by_priority.map(item => [
+                item._id || 'Sin definir',
+                item.count
+            ]);
+
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 20,
+                head: [['Prioridad', 'Cantidad']],
+                body: priorityData,
+                theme: 'grid',
+                headStyles: { fillColor: [102, 126, 234] }
+            });
+        }
+
+        // Tasks by status
+        if (stats.tasks_by_status && stats.tasks_by_status.length > 0) {
+            doc.setFontSize(14);
+            doc.text('Tareas por Estado', 14, doc.lastAutoTable.finalY + 15);
+
+            const statusData = stats.tasks_by_status.map(item => [
+                item._id || 'Sin definir',
+                item.count
+            ]);
+
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 20,
+                head: [['Estado', 'Cantidad']],
+                body: statusData,
+                theme: 'grid',
+                headStyles: { fillColor: [102, 126, 234] }
+            });
+        }
+
+        // Save the PDF
+        doc.save(`reporte_sistema_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    };
+
+    // CSV Export function for reports
+    const exportReportToCSV = () => {
+        if (!stats) {
+            alert('No hay datos de estadísticas para exportar');
+            return;
+        }
+
+        const headers = ['Métrica', 'Valor'];
+        const rows = [
+            ['Total de Tareas', stats.total_tasks || 0],
+            ['Tareas Pendientes', stats.pending_tasks || 0],
+            ['Tareas en Progreso', stats.in_progress_tasks || 0],
+            ['Tareas Completadas', stats.completed_tasks || 0],
+            ['Total de Proyectos', stats.total_projects || 0],
+            ['Total de Usuarios', stats.total_users || 0],
+            ['', ''], // Empty row
+            ['Prioridad', 'Cantidad']
+        ];
+
+        // Add priority data
+        if (stats.tasks_by_priority && stats.tasks_by_priority.length > 0) {
+            stats.tasks_by_priority.forEach(item => {
+                rows.push([item._id || 'Sin definir', item.count]);
+            });
+        }
+
+        rows.push(['', ''], ['Estado', 'Cantidad']);
+
+        // Add status data
+        if (stats.tasks_by_status && stats.tasks_by_status.length > 0) {
+            stats.tasks_by_status.forEach(item => {
+                rows.push([item._id || 'Sin definir', item.count]);
+            });
+        }
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `reporte_sistema_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     if (!isAuthenticated) {
@@ -396,8 +601,118 @@ function App() {
                                 </form>
                             </div>
 
+                            {selectedTaskId && (
+                                <div className="section-card">
+                                    <h2>Comentarios</h2>
+                                    <div className="comments-section">
+                                        <div className="comments-list">
+                                            {comments.length === 0 ? (
+                                                <p className="empty-message" style={{ padding: '20px' }}>No hay comentarios aún</p>
+                                            ) : (
+                                                comments.map((comment) => (
+                                                    <div key={comment._id} className="comment-item">
+                                                        <div className="comment-header">
+                                                            <strong>{comment.username}</strong>
+                                                            <span className="comment-time">
+                                                                {format(new Date(comment.created_at), 'dd/MM/yyyy HH:mm')}
+                                                            </span>
+                                                        </div>
+                                                        <div className="comment-text">{comment.comment}</div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                        <form onSubmit={handleAddComment} className="comment-form">
+                                            <textarea
+                                                value={commentText}
+                                                onChange={(e) => setCommentText(e.target.value)}
+                                                placeholder="Escribe un comentario..."
+                                                rows="3"
+                                                style={{ width: '100%' }}
+                                            />
+                                            <button type="submit" className="btn btn-primary" style={{ marginTop: '10px' }}>
+                                                Agregar Comentario
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="section-card">
-                                <h2>Lista de Tareas</h2>
+                                <h2>Búsqueda de Tareas</h2>
+                                <div className="search-filters">
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label htmlFor="searchText">Buscar por texto</label>
+                                            <input
+                                                id="searchText"
+                                                type="text"
+                                                value={searchFilters.text}
+                                                onChange={(e) => setSearchFilters({ ...searchFilters, text: e.target.value })}
+                                                placeholder="Título o descripción..."
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label htmlFor="searchStatus">Estado</label>
+                                            <select
+                                                id="searchStatus"
+                                                value={searchFilters.status}
+                                                onChange={(e) => setSearchFilters({ ...searchFilters, status: e.target.value })}
+                                            >
+                                                <option value="">Todos</option>
+                                                <option value="Pendiente">Pendiente</option>
+                                                <option value="En Progreso">En Progreso</option>
+                                                <option value="Completada">Completada</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label htmlFor="searchPriority">Prioridad</label>
+                                            <select
+                                                id="searchPriority"
+                                                value={searchFilters.priority}
+                                                onChange={(e) => setSearchFilters({ ...searchFilters, priority: e.target.value })}
+                                            >
+                                                <option value="">Todas</option>
+                                                <option value="Baja">Baja</option>
+                                                <option value="Media">Media</option>
+                                                <option value="Alta">Alta</option>
+                                                <option value="Crítica">Crítica</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label htmlFor="searchProject">Proyecto</label>
+                                            <select
+                                                id="searchProject"
+                                                value={searchFilters.project_id}
+                                                onChange={(e) => setSearchFilters({ ...searchFilters, project_id: e.target.value })}
+                                            >
+                                                <option value="">Todos</option>
+                                                {projects.map((p) => (
+                                                    <option key={p._id} value={p._id}>{p.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="form-actions">
+                                        <button type="button" className="btn btn-primary" onClick={handleSearch}>
+                                            🔍 Buscar
+                                        </button>
+                                        <button type="button" className="btn btn-secondary" onClick={clearSearchFilters}>
+                                            ✖ Limpiar Filtros
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="section-card">
+                                <div className="section-header">
+                                    <h2>Lista de Tareas</h2>
+                                    <button className="btn btn-secondary" onClick={exportToCSV}>
+                                        📊 Exportar CSV
+                                    </button>
+                                </div>
                                 <div className="table-container">
                                     <table className="data-table" id="tasksTable">
                                         <thead>
@@ -548,11 +863,20 @@ function App() {
                         <div className="tab-content">
                             <StatsPanel stats={stats} />
                             <div className="section-card">
-                                <h2>Reportes del Sistema</h2>
+                                <div className="section-header">
+                                    <h2>Exportar Reportes</h2>
+                                </div>
                                 <p className="note-text">
-                                    Las tablas de tareas incluyen funcionalidad de exportación a PDF, CSV y Excel usando DataTables.
-                                    Regresa a la pestaña "Tareas" para usar los botones de exportación.
+                                    Exporta las estadísticas del sistema en formato PDF o CSV para análisis externo.
                                 </p>
+                                <div className="form-actions" style={{ marginTop: '20px' }}>
+                                    <button className="btn btn-primary" onClick={exportReportToPDF}>
+                                        📄 Exportar a PDF
+                                    </button>
+                                    <button className="btn btn-secondary" onClick={exportReportToCSV}>
+                                        📊 Exportar a CSV
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
