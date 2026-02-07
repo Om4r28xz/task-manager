@@ -1,0 +1,105 @@
+
+                            {selectedTaskId && (
+                                <div className="section-card">
+                                    <h2>Comentarios</h2>
+                                    <div className="comments-section">
+                                        <div className="comments-list">
+                                            {comments.length === 0 ? (
+                                                <p className="empty-message" style={{ padding: '20px' }}>No hay comentarios aún</p>
+                                            ) : (
+                                                comments.map((comment) => (
+                                                    <div key={comment._id} className="comment-item">
+                                                        <div className="comment-header">
+                                                            <strong>{comment.username}</strong>
+                                                            <span className="comment-time">
+                                                                {format(new Date(comment.created_at), 'dd/MM/yyyy HH:mm')}
+                                                            </span>
+                                                        </div>
+                                                       <div className="comment-text">{comment.comment}</div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                        <form onSubmit={handleAddComment} className="comment-form">
+                                            <textarea
+                                                value={commentText}
+                                                onChange={(e) => setCommentText(e.target.value)}
+                                                placeholder="Escribe un comentario..."
+                                                rows="3"
+                                                style={{ width: '100%' }}
+                                            />
+                                            <button type="submit" className="btn btn-primary" style={{ marginTop: '10px' }}>
+                                                Agregar Comentario
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="section-card">
+                                <h2>Búsqueda de Tareas</h2>
+                                <div className="search-filters">
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label htmlFor="searchText">Buscar por texto</label>
+                                            <input
+                                                id="searchText"
+                                                type="text"
+                                                value={searchFilters.text}
+                                                onChange={(e) => setSearchFilters({ ...searchFilters, text: e.target.value })}
+                                                placeholder="Título o descripción..."
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label htmlFor="searchStatus">Estado</label>
+                                            <select
+                                                id="searchStatus"
+                                                value={searchFilters.status}
+                                                onChange={(e) => setSearchFilters({ ...searchFilters, status: e.target.value })}
+                                            >
+                                                <option value="">Todos</option>
+                                                <option value="Pendiente">Pendiente</option>
+                                                <option value="En Progreso">En Progreso</option>
+                                                <option value="Completada">Completada</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label htmlFor="searchPriority">Prioridad</label>
+                                            <select
+                                                id="searchPriority"
+                                                value={searchFilters.priority}
+                                                onChange={(e) => setSearchFilters({ ...searchFilters, priority: e.target.value })}
+                                            >
+                                                <option value="">Todas</option>
+                                                <option value="Baja">Baja</option>
+                                                <option value="Media">Media</option>
+                                                <option value="Alta">Alta</option>
+                                                <option value="Crítica">Crítica</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label htmlFor="searchProject">Proyecto</label>
+                                            <select
+                                                id="searchProject"
+                                                value={searchFilters.project_id}
+                                                onChange={(e) => setSearchFilters({ ...searchFilters, project_id: e.target.value })}
+                                            >
+                                                <option value="">Todos</option>
+                                                {projects.map((p) => (
+                                                    <option key={p._id} value={p._id}>{p.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="form-actions">
+                                        <button type="button" className="btn btn-primary" onClick={handleSearch}>
+                                            🔍 Buscar
+                                        </button>
+                                        <button type="button" className="btn btn-secondary" onClick={clearSearchFilters}>
+                                            ✖ Limpiar Filtros
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
