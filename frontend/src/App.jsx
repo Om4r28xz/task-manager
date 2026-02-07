@@ -279,10 +279,23 @@ function App() {
             });
             setCommentText('');
             await loadComments(selectedTaskId);
+            alert('Comentario agregado exitosamente');
         } catch (error) {
-            const errorMsg = error.response?.data?.detail || error.message || JSON.stringify(error);
+            let errorMsg = 'Error desconocido';
+            if (error.response?.data) {
+                if (typeof error.response.data === 'string') {
+                    errorMsg = error.response.data;
+                } else if (error.response.data.detail) {
+                    errorMsg = error.response.data.detail;
+                } else {
+                    errorMsg = JSON.stringify(error.response.data);
+                }
+            } else if (error.message) {
+                errorMsg = error.message;
+            }
             alert('Error al agregar comentario: ' + errorMsg);
-            console.error('Comment error:', error);
+            console.error('Comment error details:', error);
+            console.error('Error response:', error.response);
         }
     };
 
@@ -696,43 +709,37 @@ function App() {
                     {activeTab === 'comments' && (
                         <div className="tab-content">
                             <div className="section-card">
-                                <h2>Comentarios de Tareas</h2>
-                                {!selectedTaskId ? (
-                                    <p className="empty-message">Selecciona una tarea en la pestaña "Tareas" para ver y agregar comentarios.</p>
-                                ) : (
-                                    <div className="comments-section">
-                                        <div className="comments-list">
+                                <h2>Todos los Comentarios</h2>
+                                <div className="table-container">
+                                    <table className="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Usuario</th>
+                                                <th>Tarea</th>
+                                                <th>Comentario</th>
+                                                <th>Fecha</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
                                             {comments.length === 0 ? (
-                                                <p className="empty-message" style={{ padding: '20px' }}>No hay comentarios aún</p>
+                                                <tr>
+                                                    <td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>
+                                                        No hay comentarios aún. Agrega comentarios desde la pestaña "Búsqueda".
+                                                    </td>
+                                                </tr>
                                             ) : (
                                                 comments.map((comment) => (
-                                                    <div key={comment._id} className="comment-item">
-                                                        <div className="comment-header">
-                                                            <strong>{comment.username}</strong>
-                                                            <span className="comment-time">
-                                                                {format(new Date(comment.created_at), 'dd/MM/yyyy HH:mm')}
-                                                            </span>
-                                                        </div>
-                                                        <div className="comment-text">{comment.comment}</div>
-                                                    </div>
+                                                    <tr key={comment._id}>
+                                                        <td><strong>{comment.username}</strong></td>
+                                                        <td>{comment.task_title || `Tarea #${comment.task_id}`}</td>
+                                                        <td>{comment.comment}</td>
+                                                        <td>{format(new Date(comment.created_at), 'dd/MM/yyyy HH:mm')}</td>
+                                                    </tr>
                                                 ))
                                             )}
-                                        </div>
-                                        <form onSubmit={handleAddComment} className="comment-form">
-                                            <textarea
-                                                value={commentText}
-                                                onChange={(e) => setCommentText(e.target.value)}
-                                                placeholder="Escribe un comentario..."
-                                                rows="3"
-                                                style={{ width: '100%' }}
-                                                required
-                                            />
-                                            <button type="submit" className="btn btn-primary" style={{ marginTop: '10px' }}>
-                                                Agregar Comentario
-                                            </button>
-                                        </form>
-                                    </div>
-                                )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -846,8 +853,11 @@ function App() {
                                                             <td>{task.project_name || 'N/A'}</td>
                                                             <td>{task.assigned_to_username || 'No asignado'}</td>
                                                             <td>
-                                                                <button className="btn btn-sm" onClick={() => selectTask(task)} title="Editar">
+                                                                <button className="btn btn-sm" onClick={() => selectTask(task)} title="Editar" style={{ marginRight: '5px' }}>
                                                                     ✏️
+                                                                </button>
+                                                                <button className="btn btn-sm btn-danger" onClick={() => handleTaskDelete(task._id)} title="Eliminar">
+                                                                    🗑️
                                                                 </button>
                                                             </td>
                                                         </tr>
@@ -857,6 +867,25 @@ function App() {
                                         </table>
                                     </div>
                                 </div>
+
+                                {selectedTaskId && (
+                                    <div className="section-card" style={{ marginTop: '20px' }}>
+                                        <h3>Agregar Comentario a la Tarea Seleccionada</h3>
+                                        <form onSubmit={handleAddComment} className="comment-form">
+                                            <textarea
+                                                value={commentText}
+                                                onChange={(e) => setCommentText(e.target.value)}
+                                                placeholder="Escribe un comentario para la tarea seleccionada..."
+                                                rows="3"
+                                                style={{ width: '100%' }}
+                                                required
+                                            />
+                                            <button type="submit" className="btn btn-primary" style={{ marginTop: '10px' }}>
+                                                💬 Agregar Comentario
+                                            </button>
+                                        </form>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -907,11 +936,12 @@ function App() {
                                             </div>
                                             <div className="history-details">
                                                 <strong>{entry.username}</strong>
+                                                <span> {entry.action.toLowerCase() === 'create' ? 'creó' : entry.action.toLowerCase() === 'update' ? 'actualizó' : 'eliminó'} la tarea #{entry.task_id || 'N/A'}</span>
                                                 {entry.old_value && entry.new_value && (
-                                                    <span> cambió de "{entry.old_value}" a "{entry.new_value}"</span>
+                                                    <span> - cambió "{entry.field}" de "{entry.old_value}" a "{entry.new_value}"</span>
                                                 )}
                                                 {entry.new_value && !entry.old_value && (
-                                                    <span>: {entry.new_value}</span>
+                                                    <span> - {entry.field}: {entry.new_value}</span>
                                                 )}
                                             </div>
                                             <div className="history-time">

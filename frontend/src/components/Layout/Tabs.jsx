@@ -9,7 +9,6 @@ function Tabs({ activeTab, onTabChange }) {
         { id: 'history', label: 'Historial' },
         { id: 'notifications', label: 'Notificaciones' },
         { id: 'search', label: 'Búsqueda' },
-        { id: 'reports', label: 'Reportes' },
     ];
 
     return (
