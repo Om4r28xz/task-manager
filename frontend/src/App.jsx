@@ -280,7 +280,9 @@ function App() {
             setCommentText('');
             await loadComments(selectedTaskId);
         } catch (error) {
-            alert('Error al agregar comentario: ' + (error.response?.data?.detail || error.message));
+            const errorMsg = error.response?.data?.detail || error.message || JSON.stringify(error);
+            alert('Error al agregar comentario: ' + errorMsg);
+            console.error('Comment error:', error);
         }
     };
 
@@ -601,111 +603,6 @@ function App() {
                                 </form>
                             </div>
 
-                            {selectedTaskId && (
-                                <div className="section-card">
-                                    <h2>Comentarios</h2>
-                                    <div className="comments-section">
-                                        <div className="comments-list">
-                                            {comments.length === 0 ? (
-                                                <p className="empty-message" style={{ padding: '20px' }}>No hay comentarios aún</p>
-                                            ) : (
-                                                comments.map((comment) => (
-                                                    <div key={comment._id} className="comment-item">
-                                                        <div className="comment-header">
-                                                            <strong>{comment.username}</strong>
-                                                            <span className="comment-time">
-                                                                {format(new Date(comment.created_at), 'dd/MM/yyyy HH:mm')}
-                                                            </span>
-                                                        </div>
-                                                        <div className="comment-text">{comment.comment}</div>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                        <form onSubmit={handleAddComment} className="comment-form">
-                                            <textarea
-                                                value={commentText}
-                                                onChange={(e) => setCommentText(e.target.value)}
-                                                placeholder="Escribe un comentario..."
-                                                rows="3"
-                                                style={{ width: '100%' }}
-                                            />
-                                            <button type="submit" className="btn btn-primary" style={{ marginTop: '10px' }}>
-                                                Agregar Comentario
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="section-card">
-                                <h2>Búsqueda de Tareas</h2>
-                                <div className="search-filters">
-                                    <div className="form-row">
-                                        <div className="form-group">
-                                            <label htmlFor="searchText">Buscar por texto</label>
-                                            <input
-                                                id="searchText"
-                                                type="text"
-                                                value={searchFilters.text}
-                                                onChange={(e) => setSearchFilters({ ...searchFilters, text: e.target.value })}
-                                                placeholder="Título o descripción..."
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label htmlFor="searchStatus">Estado</label>
-                                            <select
-                                                id="searchStatus"
-                                                value={searchFilters.status}
-                                                onChange={(e) => setSearchFilters({ ...searchFilters, status: e.target.value })}
-                                            >
-                                                <option value="">Todos</option>
-                                                <option value="Pendiente">Pendiente</option>
-                                                <option value="En Progreso">En Progreso</option>
-                                                <option value="Completada">Completada</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="form-row">
-                                        <div className="form-group">
-                                            <label htmlFor="searchPriority">Prioridad</label>
-                                            <select
-                                                id="searchPriority"
-                                                value={searchFilters.priority}
-                                                onChange={(e) => setSearchFilters({ ...searchFilters, priority: e.target.value })}
-                                            >
-                                                <option value="">Todas</option>
-                                                <option value="Baja">Baja</option>
-                                                <option value="Media">Media</option>
-                                                <option value="Alta">Alta</option>
-                                                <option value="Crítica">Crítica</option>
-                                            </select>
-                                        </div>
-                                        <div className="form-group">
-                                            <label htmlFor="searchProject">Proyecto</label>
-                                            <select
-                                                id="searchProject"
-                                                value={searchFilters.project_id}
-                                                onChange={(e) => setSearchFilters({ ...searchFilters, project_id: e.target.value })}
-                                            >
-                                                <option value="">Todos</option>
-                                                {projects.map((p) => (
-                                                    <option key={p._id} value={p._id}>{p.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="form-actions">
-                                        <button type="button" className="btn btn-primary" onClick={handleSearch}>
-                                            🔍 Buscar
-                                        </button>
-                                        <button type="button" className="btn btn-secondary" onClick={clearSearchFilters}>
-                                            ✖ Limpiar Filtros
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
                             <div className="section-card">
                                 <div className="section-header">
                                     <h2>Lista de Tareas</h2>
@@ -791,6 +688,174 @@ function App() {
                                             <small>Creado: {format(new Date(project.created_at), 'dd/MM/yyyy')}</small>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'comments' && (
+                        <div className="tab-content">
+                            <div className="section-card">
+                                <h2>Comentarios de Tareas</h2>
+                                {!selectedTaskId ? (
+                                    <p className="empty-message">Selecciona una tarea en la pestaña "Tareas" para ver y agregar comentarios.</p>
+                                ) : (
+                                    <div className="comments-section">
+                                        <div className="comments-list">
+                                            {comments.length === 0 ? (
+                                                <p className="empty-message" style={{ padding: '20px' }}>No hay comentarios aún</p>
+                                            ) : (
+                                                comments.map((comment) => (
+                                                    <div key={comment._id} className="comment-item">
+                                                        <div className="comment-header">
+                                                            <strong>{comment.username}</strong>
+                                                            <span className="comment-time">
+                                                                {format(new Date(comment.created_at), 'dd/MM/yyyy HH:mm')}
+                                                            </span>
+                                                        </div>
+                                                        <div className="comment-text">{comment.comment}</div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                        <form onSubmit={handleAddComment} className="comment-form">
+                                            <textarea
+                                                value={commentText}
+                                                onChange={(e) => setCommentText(e.target.value)}
+                                                placeholder="Escribe un comentario..."
+                                                rows="3"
+                                                style={{ width: '100%' }}
+                                                required
+                                            />
+                                            <button type="submit" className="btn btn-primary" style={{ marginTop: '10px' }}>
+                                                Agregar Comentario
+                                            </button>
+                                        </form>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'search' && (
+                        <div className="tab-content">
+                            <div className="section-card">
+                                <h2>Búsqueda de Tareas</h2>
+                                <div className="search-filters">
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label htmlFor="searchText">Buscar por texto</label>
+                                            <input
+                                                id="searchText"
+                                                type="text"
+                                                value={searchFilters.text}
+                                                onChange={(e) => setSearchFilters({ ...searchFilters, text: e.target.value })}
+                                                placeholder="Título o descripción..."
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label htmlFor="searchStatus">Estado</label>
+                                            <select
+                                                id="searchStatus"
+                                                value={searchFilters.status}
+                                                onChange={(e) => setSearchFilters({ ...searchFilters, status: e.target.value })}
+                                            >
+                                                <option value="">Todos</option>
+                                                <option value="Pendiente">Pendiente</option>
+                                                <option value="En Progreso">En Progreso</option>
+                                                <option value="Completada">Completada</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label htmlFor="searchPriority">Prioridad</label>
+                                            <select
+                                                id="searchPriority"
+                                                value={searchFilters.priority}
+                                                onChange={(e) => setSearchFilters({ ...searchFilters, priority: e.target.value })}
+                                            >
+                                                <option value="">Todas</option>
+                                                <option value="Baja">Baja</option>
+                                                <option value="Media">Media</option>
+                                                <option value="Alta">Alta</option>
+                                                <option value="Crítica">Crítica</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label htmlFor="searchProject">Proyecto</label>
+                                            <select
+                                                id="searchProject"
+                                                value={searchFilters.project_id}
+                                                onChange={(e) => setSearchFilters({ ...searchFilters, project_id: e.target.value })}
+                                            >
+                                                <option value="">Todos</option>
+                                                {projects.map((p) => (
+                                                    <option key={p._id} value={p._id}>{p.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="form-actions">
+                                        <button type="button" className="btn btn-primary" onClick={handleSearch}>
+                                            🔍 Buscar
+                                        </button>
+                                        <button type="button" className="btn btn-secondary" onClick={clearSearchFilters}>
+                                            ✖ Limpiar Filtros
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="section-card" style={{ marginTop: '20px' }}>
+                                    <h3>Resultados de Búsqueda</h3>
+                                    <div className="table-container">
+                                        <table className="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Título</th>
+                                                    <th>Estado</th>
+                                                    <th>Prioridad</th>
+                                                    <th>Proyecto</th>
+                                                    <th>Asignado</th>
+                                                    <th>Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {tasks.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
+                                                            No se encontraron tareas
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    tasks.map((task) => (
+                                                        <tr key={task._id}>
+                                                            <td>{task.task_id}</td>
+                                                            <td>{task.title}</td>
+                                                            <td>
+                                                                <span className={`badge badge-${task.status.toLowerCase().replace(' ', '-')}`}>
+                                                                    {task.status}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <span className={`badge badge-${task.priority.toLowerCase()}`}>
+                                                                    {task.priority}
+                                                                </span>
+                                                            </td>
+                                                            <td>{task.project_name || 'N/A'}</td>
+                                                            <td>{task.assigned_to_username || 'No asignado'}</td>
+                                                            <td>
+                                                                <button className="btn btn-sm" onClick={() => selectTask(task)} title="Editar">
+                                                                    ✏️
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
