@@ -275,7 +275,7 @@ function App() {
         try {
             await commentsAPI.create({
                 task_id: selectedTaskId,
-                comment: commentText,
+                content: commentText,  // Backend expects 'content', not 'comment'
             });
             setCommentText('');
             await loadComments(selectedTaskId);
@@ -709,37 +709,88 @@ function App() {
                     {activeTab === 'comments' && (
                         <div className="tab-content">
                             <div className="section-card">
-                                <h2>Todos los Comentarios</h2>
-                                <div className="table-container">
-                                    <table className="data-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Usuario</th>
-                                                <th>Tarea</th>
-                                                <th>Comentario</th>
-                                                <th>Fecha</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {comments.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>
-                                                        No hay comentarios aún. Agrega comentarios desde la pestaña "Búsqueda".
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                comments.map((comment) => (
-                                                    <tr key={comment._id}>
-                                                        <td><strong>{comment.username}</strong></td>
-                                                        <td>{comment.task_title || `Tarea #${comment.task_id}`}</td>
-                                                        <td>{comment.comment}</td>
-                                                        <td>{format(new Date(comment.created_at), 'dd/MM/yyyy HH:mm')}</td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
+                                <h2>Comentarios de Tareas</h2>
+
+                                <div className="form-group" style={{ marginBottom: '20px' }}>
+                                    <label htmlFor="commentTaskSelect">Seleccionar Tarea para Comentar</label>
+                                    <select
+                                        id="commentTaskSelect"
+                                        value={selectedTaskId || ''}
+                                        onChange={(e) => {
+                                            const taskId = e.target.value;
+                                            setSelectedTaskId(taskId);
+                                            if (taskId) {
+                                                loadComments(taskId);
+                                            } else {
+                                                setComments([]);
+                                            }
+                                        }}
+                                    >
+                                        <option value="">-- Selecciona una tarea --</option>
+                                        {tasks.map((task) => (
+                                            <option key={task._id} value={task._id}>
+                                                #{task.task_id} - {task.title}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
+
+                                {selectedTaskId && (
+                                    <>
+                                        <div className="section-card" style={{ marginBottom: '20px' }}>
+                                            <h3>Agregar Comentario</h3>
+                                            <form onSubmit={handleAddComment} className="comment-form">
+                                                <textarea
+                                                    value={commentText}
+                                                    onChange={(e) => setCommentText(e.target.value)}
+                                                    placeholder="Escribe un comentario para la tarea seleccionada..."
+                                                    rows="3"
+                                                    style={{ width: '100%' }}
+                                                    required
+                                                />
+                                                <button type="submit" className="btn btn-primary" style={{ marginTop: '10px' }}>
+                                                    💬 Agregar Comentario
+                                                </button>
+                                            </form>
+                                        </div>
+
+                                        <div className="section-card">
+                                            <h3>Comentarios Existentes</h3>
+                                            <div className="table-container">
+                                                <table className="data-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Usuario</th>
+                                                            <th>Comentario</th>
+                                                            <th>Fecha</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {comments.length === 0 ? (
+                                                            <tr>
+                                                                <td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>
+                                                                    No hay comentarios aún para esta tarea.
+                                                                </td>
+                                                            </tr>
+                                                        ) : (
+                                                            comments.map((comment) => (
+                                                                <tr key={comment._id}>
+                                                                    <td><strong>{comment.username}</strong></td>
+                                                                    <td>{comment.content || comment.comment}</td>
+                                                                    <td>{format(new Date(comment.created_at), 'dd/MM/yyyy HH:mm')}</td>
+                                                                </tr>
+                                                            ))
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {!selectedTaskId && (
+                                    <p className="empty-message">Selecciona una tarea de la lista para ver y agregar comentarios.</p>
+                                )}
                             </div>
                         </div>
                     )}
@@ -853,7 +904,15 @@ function App() {
                                                             <td>{task.project_name || 'N/A'}</td>
                                                             <td>{task.assigned_to_username || 'No asignado'}</td>
                                                             <td>
-                                                                <button className="btn btn-sm" onClick={() => selectTask(task)} title="Editar" style={{ marginRight: '5px' }}>
+                                                                <button
+                                                                    className="btn btn-sm"
+                                                                    onClick={() => {
+                                                                        selectTask(task);
+                                                                        setActiveTab('tasks');
+                                                                    }}
+                                                                    title="Editar"
+                                                                    style={{ marginRight: '5px' }}
+                                                                >
                                                                     ✏️
                                                                 </button>
                                                                 <button className="btn btn-sm btn-danger" onClick={() => handleTaskDelete(task._id)} title="Eliminar">
@@ -867,25 +926,6 @@ function App() {
                                         </table>
                                     </div>
                                 </div>
-
-                                {selectedTaskId && (
-                                    <div className="section-card" style={{ marginTop: '20px' }}>
-                                        <h3>Agregar Comentario a la Tarea Seleccionada</h3>
-                                        <form onSubmit={handleAddComment} className="comment-form">
-                                            <textarea
-                                                value={commentText}
-                                                onChange={(e) => setCommentText(e.target.value)}
-                                                placeholder="Escribe un comentario para la tarea seleccionada..."
-                                                rows="3"
-                                                style={{ width: '100%' }}
-                                                required
-                                            />
-                                            <button type="submit" className="btn btn-primary" style={{ marginTop: '10px' }}>
-                                                💬 Agregar Comentario
-                                            </button>
-                                        </form>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     )}
