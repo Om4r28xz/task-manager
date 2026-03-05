@@ -19,9 +19,9 @@ Esta aplicación se deploya en dos servicios:
 ### 1.3 Configurar variables de entorno
 En Railway, ve a Variables y agrega:
 ```
-MONGODB_URL=mongodb+srv://Omar28xz:Omar280505..@sfarc.u3aakdd.mongodb.net/?appName=SFARC
+MONGODB_URL=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/?appName=<AppName>
 MONGODB_DB_NAME=task_manager
-SECRET_KEY=YjM4ZDk2YzEtMjQwZS00ZTZhLTk3NzYtYzJkNGE1ZjBmMzIy
+SECRET_KEY=<your_secure_random_secret_key>
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 CORS_ORIGINS=http://localhost:5173,https://*.vercel.app

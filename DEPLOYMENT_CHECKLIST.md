@@ -28,10 +28,7 @@ git push -u origin main
 [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((New-Guid).ToString()))
 ```
 
-O usa este valor seguro:
-```
-YjM4ZDk2YzEtMjQwZS00ZTZhLTk3NzYtYzJkNGE1ZjBmMzIy
-```
+💡 **Importante:** Genera tu propia SECRET_KEY única usando el comando de arriba y guárdala de forma segura.
 
 ## 📋 Checklist Pre-Deployment
 
